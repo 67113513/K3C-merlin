@@ -37,7 +37,26 @@ BIN_NAME="${BIN_NAME%.*}"
 if [ "$ACTION" != "" ]; then
 	BIN_NAME=$ACTION
 fi
-
+ARCH=`uname -m`
+if [ "$ARCH" == "armv7l" ]; then
+	ARCH_SUFFIX="arm"
+elif [ "$ARCH" == "aarch64" ]; then
+	ARCH_SUFFIX="arm64"
+elif [ "$ARCH" == "mips" ]; then
+	ARCH_SUFFIX="mips"
+elif [ "$ARCH" == "mipsle" ]; then
+	ARCH_SUFFIX="mipsle"
+else
+	ARCH_SUFFIX="arm"
+fi
+#new chips 6750-6755 are armv7l,2/3/4 cores 1.5G
+KVER=`uname -r`
+if [ "$KVER" == "4.1.52" -o "$KVER" == "4.1.49" ];then
+	ARCH_SUFFIX="armng"
+fi
+if [ "$KVER" == "3.14.77" ];then
+	ARCH_SUFFIX="armqca"
+fi
 VER_SUFFIX=_version
 MD5_SUFFIX=_md5
 INSTALL_SUFFIX=_install
@@ -72,13 +91,40 @@ install_module() {
 	# Just ignore the old installing_module
 	export softcenter_installing_module=$softcenter_installing_todo
 	export softcenter_installing_tick=`date +%s`
-	export softcenter_installing_status="2"
+	dbus set softcenter_installing_status="2"
+	sleep 1
 	dbus save softcenter_installing_
 
 	URL_SPLIT="/"
 	#OLD_MD5=`dbus get softcenter_module_$softcenter_installing_module$MD5_SUFFIX`
 	OLD_VERSION=`dbus get softcenter_module_$softcenter_installing_module$VER_SUFFIX`
-	HOME_URL=`dbus get softcenter_home_url`
+	if [ -z "$(dbus get softcenter_server_tcode)" ]; then
+		modelname=`nvram get modelname`
+		if [ "$modelname" == "K3" ]; then
+			dbus set softcenter_server_tcode=CN
+		elif [ "$modelname" == "SBRAC1900P" -o "$modelname" == "SBR-AC1900P" -o "$modelname" == "SBRAC3200P" -o "$modelname" == "SBR-AC3200P" -o "$modelname" == "R7900P" -o "$modelname" == "R8000P" ]; then
+			dbus set softcenter_server_tcode=ALI
+		elif [ "$modelname" == "GTAC2900" -o "$modelname" == "GTAC5300" -o "$modelname" == "RTAC86U" ]; then
+			dbus set softcenter_server_tcode=CN1
+		elif [ "$modelname" == "RTAX58U" -o "$modelname" == "TUFAX3000" -o "$modelname" == "RTAX56U" -o "$modelname" == "RTACRH17" ]; then
+#test only
+			dbus set softcenter_server_tcode=CN1
+		else
+			dbus set softcenter_server_tcode=`nvram get territory_code |cut -c 1-2`
+		fi
+	fi
+	eval `dbus export softcenter_server_tcode`
+	if [ "$softcenter_server_tcode" == "CN" ]; then
+		HOME_URL="http://update.wifi.com.cn/$ARCH_SUFFIX"
+	elif [ "$softcenter_server_tcode" == "CN1" ]; then
+		HOME_URL="https://sc.softcenter.site/$ARCH_SUFFIX"
+	elif [ "$softcenter_server_tcode" == "ALI" ]; then
+		HOME_URL="https://wufan.softcenter.site/$ARCH_SUFFIX"
+	else
+		HOME_URL="https://sc.paldier.com/$ARCH_SUFFIX"
+	fi
+
+	#HOME_URL=`dbus get softcenter_home_url`
 	TAR_URL=$HOME_URL$URL_SPLIT$softcenter_installing_tar_url
 	FNAME=`basename $softcenter_installing_tar_url`
 
@@ -95,17 +141,18 @@ install_module() {
 	cd /tmp
 	rm -f $FNAME
 	rm -rf "/tmp/$softcenter_installing_module"
+	dbus set softcenter_installing_status="3"
+	sleep 1
 	wget --no-check-certificate --tries=1 --timeout=15 $TAR_URL
 	RETURN_CODE=$?
 
 	if [ "$RETURN_CODE" != "0" ]; then
-	dbus set softcenter_installing_status="12"
-	sleep 2
-
-	dbus set softcenter_installing_status="0"
-	dbus set softcenter_installing_module=""
-	dbus set softcenter_installing_todo=""
-	LOGGER "wget error, $RETURN_CODE"
+		dbus set softcenter_installing_status="12"
+		sleep 2
+		dbus set softcenter_installing_status="0"
+		dbus set softcenter_installing_module=""
+		dbus set softcenter_installing_todo=""
+		LOGGER "wget $TAR_URL error, $RETURN_CODE"
 	exit 4
 	fi
 
@@ -231,7 +278,6 @@ uninstall_module() {
 		rm -f /jffs/softcenter/webs/Module_$softcenter_installing_todo.asp
         rm -f /jffs/softcenter/init.d/S*$softcenter_installing_todo.sh
 	fi
-	curl -s http://sc.paldier.com/"$softcenter_installing_module"/"$softcenter_installing_module"/install.sh >/dev/null 2>&1
 }
 
 #LOGGER $BIN_NAME
@@ -257,3 +303,4 @@ ks_app_remove)
 	install_module
 	;;
 esac
+

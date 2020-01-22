@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -122,7 +122,7 @@ var buildno = '<% nvram_get("buildno"); %>';
 //var rcno = '<% nvram_get("rcno"); %>';
 var extendno = '<% nvram_get("extendno"); %>';
 var FWString = '';
-
+var modelname =  '<% nvram_get("modelname"); %>';
 FWString = firmver+"."+buildno;
 //if(rcno.length > 0)
 //	FWString += "rc"+rcno;
@@ -321,8 +321,8 @@ function initial(){
 	*/
 
 	if(based_modelid == "RT-AC68R"){	//MODELDEP	//id: asus_link is in string tag #FW_desc0#
-		document.getElementById("asus_link").href = "http://www.asus.com/us/supportonly/RT-AC68R/";
-		document.getElementById("asus_link").innerHTML = "http://www.asus.com/us/supportonly/RT-AC68R/";
+		document.getElementById("asus_link").href = "https://www.asus.com/us/supportonly/RT-AC68R/";
+		document.getElementById("asus_link").innerHTML = "https://www.asus.com/us/supportonly/RT-AC68R/";
 	}
 
 	if(based_modelid == "RT-AC68A"){        //MODELDEP : Spec special fine tune
@@ -663,6 +663,7 @@ function sig_version_check(){
 }
 
 var sdead=0;
+var sig_chk_count=60;
 function sig_check_status(){
 	$.ajax({
     	url: '/detect_firmware.asp',
@@ -670,7 +671,7 @@ function sig_check_status(){
     	timeout: 3000,
     	error:	function(xhr){
 			sdead++;
-			if(sdead < 20){				
+			if(sdead < 20){
 				setTimeout("sig_check_status();", 1000);
 			}
 			else{
@@ -678,6 +679,7 @@ function sig_check_status(){
 			}
     		},
     	success: function(){
+			--sig_chk_count;
 			$("#sig_status").show();
 			if(sig_state_flag == 0 && sig_state_error == 0 && sig_state_update == 1){		// no need upgrade
 				$("#sig_status").html("Signature is up to date");	/* Untranslated */
@@ -691,14 +693,21 @@ function sig_check_status(){
 					document.getElementById("sig_check").disabled = false;
 				}
 				else{
-					if(sig_state_flag == 1 && sig_state_update == 0 && sig_state_upgrade == 1){		//update complete						
+					if(sig_state_flag == 1 && sig_state_update == 0 && sig_state_upgrade == 1){		//update complete
 						update_sig_ver();
 					}
 					else{		//updating
-						$("#sig_status").html("Signature is updating");	/* Untranslated */
-						setTimeout("sig_check_status();", 1000);
-					}				
-				}			
+						if(sig_chk_count < 1){
+							$("#sig_status").hide();
+							document.getElementById("sig_update_scan").style.display = "none";
+							document.getElementById("sig_check").disabled = false;
+						}
+						else{
+							$("#sig_status").html("Signature is updating");	/* Untranslated */
+							setTimeout("sig_check_status();", 1000);
+						}
+					}
+				}
 			}
   		}
   	});
@@ -1059,23 +1068,16 @@ function check_AiMesh_fw_version(_fw) {
 	var support_manual_fw_id = 382;
 	var support_manual_fw_num = 18000;
 	var manual_status = false;
-	var fw_array = _fw.split(".");
-	for(var i = 0; i < fw_array.length; i += 1) {
-		if( fw_array[i] != "" && (fw_array[i].indexOf("_") != -1) && (fw_array[i].indexOf("-") != -1) ) {
-			var fw_id_num = fw_array[i].substring(0, fw_array[i].indexOf('-')).split("_");
-			var fw_id = fw_id_num[0];
-			var fw_num = fw_id_num[1];
-			if(parseInt(fw_id) > support_manual_fw_id) {
-				manual_status = true;
-				break;
-			}
-			else if( (parseInt(fw_id) == support_manual_fw_id) && (parseInt(fw_num) >= support_manual_fw_num) ) {
-				manual_status = true;
-				break;
-			}
+	var fw_array = _fw.match(/(\d+)\.(\d+)\.(\d+)\.(\d+)\.([^_]+)_([^-]+)/);
+	if (fw_array) {
+		var fw_id = fw_array[5];
+		var fw_num = fw_array[6];
+		if( (parseInt(fw_id) > support_manual_fw_id) ||
+		    (parseInt(fw_id) == support_manual_fw_id) && (parseInt(fw_num) >= support_manual_fw_num) ) {
+			manual_status = true;
 		}
 	}
-	return manual_status
+	return manual_status;
 }
 </script>
 </head>
@@ -1222,7 +1224,7 @@ function check_AiMesh_fw_version(_fw) {
 			<tr id="manually_upgrade_tr">
 				<th><#FW_item5#></th>
 				<td>
-					<input type="file" name="file" class="input" style="color:#FFCC00;*color:#000;width: 194px;">
+					<input type="file" id="filename" name="file" class="input" style="color:#FFCC00;*color:#000;width: 194px;">
 					<input type="button" name="upload" class="button_gen" onclick="submitForm()" value="<#CTL_upload#>" />
 				</td>
 			</tr>			

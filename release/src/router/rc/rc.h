@@ -453,7 +453,7 @@ extern void Set_ART2(void);
 extern void Get_EEPROM_X(char *command);
 extern void Get_CalCompare(void);
 #endif
-#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_SOC_IPQ40XX) || defined(RPAC51)
+#if defined(RTCONFIG_WIFI_QCA9990_QCA9990) || defined(RTCONFIG_WIFI_QCA9994_QCA9994) || defined(RTCONFIG_PCIE_AR9888) || defined(RTCONFIG_PCIE_QCA9888) || defined(RTCONFIG_SOC_IPQ40XX)
 extern void Set_Qcmbr(const char *value);
 extern void Get_BData_X(const char *command);
 extern int start_thermald(void);
@@ -865,7 +865,7 @@ extern pid_t pid_from_file(char *pidfile);
 extern int delay_main(int argc, char *argv[]);
 #ifdef RTCONFIG_IPV6
 extern void set_default_accept_ra(int flag);
-extern void set_intf_ipv6_accept_ra(const char *ifname, int flag);
+extern void set_default_accept_ra_defrtr(int flag);
 extern void set_intf_ipv6_dad(const char *ifname, int bridge, int flag);
 extern void config_ipv6(int enable, int incl_wan);
 #ifdef RTCONFIG_DUALWAN
@@ -1632,6 +1632,12 @@ extern void stop_dsl_diag(void);
 extern int start_dsl_diag(void);
 #endif
 #endif
+#ifdef RTCONFIG_FRS_LIVE_UPDATE
+extern int firmware_check_update_main(int argc, char *argv[]);
+#endif
+#ifdef RTCONFIG_FRS_FEEDBACK
+extern void start_sendfeedback(void);
+#endif
 #ifdef RTCONFIG_PUSH_EMAIL
 extern void start_DSLsendmail(void);
 #ifdef RTCONFIG_DBLOG
@@ -2193,4 +2199,12 @@ extern void oauth_google_update_token(void);
 extern int oauth_google_send_message(const char* receiver, const char* subject, const char* message, const char* attached_files[], int attached_files_count);
 #endif
 
+#if defined(RTCONFIG_QCA_LBD)
+extern int gen_lbd_config_file(void);
+extern void stop_qca_lbd(void);
+extern void start_qca_lbd(void);
+#endif
+#ifdef RTCONFIG_FRS_FEEDBACK
+extern int do_feedback(const char* feedback_file, char* attach_cmd);
+#endif
 #endif	/* __RC_H__ */
